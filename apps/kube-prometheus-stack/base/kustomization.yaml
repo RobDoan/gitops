@@ -5,3 +5,5 @@ resources:
   - helmrepository.yaml
   - helmrelease.yaml
   - externalsecret-alertmanager.yaml
+  - ingress-alertmanager.yaml
+  - ingress-prometheus.yaml
