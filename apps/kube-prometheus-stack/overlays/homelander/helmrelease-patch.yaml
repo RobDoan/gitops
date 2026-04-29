@@ -11,3 +11,12 @@ spec:
     prometheus:
       prometheusSpec:
         externalUrl: https://prometheus.homelander.local
+    # K3s embeds these in the k3s-server process — no separate scrape targets.
+    kubeScheduler:
+      enabled: false
+    kubeControllerManager:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    kubeEtcd:
+      enabled: false
