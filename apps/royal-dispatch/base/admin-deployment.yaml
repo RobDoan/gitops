@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin
+  namespace: royal-dispatch
+  labels:
+    app: royal-dispatch
+    component: admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: royal-dispatch
+      component: admin
+  template:
+    metadata:
+      labels:
+        app: royal-dispatch
+        component: admin
+    spec:
+      containers:
+        - name: admin
+          image: quydoan/royal-dispatch-admin:ae5f21f-1776975396 # {"$imagepolicy": "flux-system:royal-dispatch-admin"}
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NEXT_PUBLIC_FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: royal-dispatch-config
+                  key: NEXT_PUBLIC_FRONTEND_URL
+            - name: INTERNAL_API_URL
+              value: "http://backend.royal-dispatch.svc.cluster.local:8000"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

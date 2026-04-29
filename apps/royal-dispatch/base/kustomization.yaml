@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - configmap.yaml
+  - externalsecret.yaml
+  - externalsecret-postgres.yaml
+  - externalsecret-minio.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - admin-deployment.yaml
+  - admin-service.yaml
+  - ingress.yaml
+  - image-automation.yaml

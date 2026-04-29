@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qdrant
+  namespace: qdrant
+spec:
+  tls:
+    - hosts:
+        - qdrant.quybits.com
+      secretName: qdrant-tls
+  rules:
+    - host: qdrant.quybits.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: qdrant
+                port:
+                  number: 6333

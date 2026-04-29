@@ -1,0 +1,12 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grafana
+  namespace: grafana
+spec:
+  values:
+    persistence:
+      storageClassName: ssd
+    grafana.ini:
+      server:
+        root_url: "https://grafana.quybits.com"

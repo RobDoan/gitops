@@ -1,0 +1,121 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 5m
+  chart:
+    spec:
+      chart: alloy
+      version: 1.7.0
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  values:
+    alloy:
+      configMap:
+        create: true
+        content: |
+          discovery.kubernetes "pod" {
+            role = "pod"
+            selectors {
+              role  = "pod"
+              field = "spec.nodeName=" + sys.env("NODE_NAME")
+            }
+          }
+          discovery.relabel "pod_logs" {
+            targets = discovery.kubernetes.pod.targets
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_label_app"]
+              target_label  = "app"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_namespace","__meta_kubernetes_pod_container_name"]
+              separator     = "/"
+              target_label  = "job"
+            }
+            // Build __path__ = /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log
+            // Promtail's "*$1" glob-at-read-time trick does not work with
+            // loki.source.file — it calls stat() on the literal path and fails
+            // on wildcards in the middle segment. Construct the directory name
+            // explicitly from the three K8s-native labels.
+            rule {
+              source_labels = ["__meta_kubernetes_namespace","__meta_kubernetes_pod_name","__meta_kubernetes_pod_uid"]
+              separator     = "_"
+              target_label  = "__tmp_pod_dir"
+            }
+            rule {
+              source_labels = ["__tmp_pod_dir","__meta_kubernetes_pod_container_name"]
+              separator     = "/"
+              action        = "replace"
+              replacement   = "/var/log/pods/$1/*.log"
+              target_label  = "__path__"
+            }
+          }
+          // Tail pod log FILES directly, not via the Kubernetes API. The API
+          // path (loki.source.kubernetes) opens a watch per container and hits
+          // client-go's default 5 QPS rate limit — most containers on a busy
+          // node get stuck in "Waited before sending request" and never stream.
+          // loki.source.file reads from the /var/log/pods/... hostPath mount
+          // and avoids the throttler entirely.
+
+          // loki.source.file does NOT expand globs; it tails exact paths.
+          // local.file_match expands __path__ (/var/log/pods/.../<container>/*.log)
+          // into the actual rotated log files (0.log, 1.log, etc.) that kubelet
+          // writes per container restart.
+          local.file_match "pod_logs" {
+            path_targets = discovery.relabel.pod_logs.output
+          }
+          loki.source.file "pod_logs" {
+            targets    = local.file_match.pod_logs.targets
+            forward_to = [loki.write.default.receiver]
+          }
+          loki.write "default" {
+            endpoint {
+              url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+            }
+          }
+      clustering:
+        enabled: false
+      # mounts MUST live under alloy: — at the root of values it's a no-op and
+      # /var/log is not mounted, so log collection silently fails.
+      mounts:
+        varlog: true
+      # NODE_NAME exposes spec.nodeName to the River config explicitly. The chart
+      # also sets HOSTNAME from spec.nodeName, but using NODE_NAME in the config
+      # makes the intent obvious without requiring knowledge of the chart.
+      extraEnv:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 256Mi
+    controller:
+      type: daemonset
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack

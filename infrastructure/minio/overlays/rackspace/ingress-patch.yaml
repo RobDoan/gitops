@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-api
+  namespace: minio
+spec:
+  tls:
+    - hosts:
+        - minio.quybits.com
+      secretName: minio-api-tls
+  rules:
+    - host: minio.quybits.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-console
+  namespace: minio
+spec:
+  tls:
+    - hosts:
+        - minio-console.quybits.com
+      secretName: minio-console-tls
+  rules:
+    - host: minio-console.quybits.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 9001

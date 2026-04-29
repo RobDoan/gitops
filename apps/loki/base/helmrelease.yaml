@@ -1,0 +1,105 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: loki
+      version: 6.55.0
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  valuesFrom:
+    - kind: Secret
+      name: loki-s3
+      valuesKey: access-key
+      targetPath: loki.storage.s3.accessKeyId
+    - kind: Secret
+      name: loki-s3
+      valuesKey: secret-key
+      targetPath: loki.storage.s3.secretAccessKey
+  values:
+    deploymentMode: SingleBinary
+    loki:
+      auth_enabled: false
+      commonConfig:
+        replication_factor: 1
+      schemaConfig:
+        configs:
+          - from: "2026-04-22"
+            store: tsdb
+            object_store: s3
+            schema: v13
+            index:
+              prefix: loki_index_
+              period: 24h
+      storage:
+        type: s3
+        bucketNames:
+          chunks: loki-chunks
+          ruler: loki-ruler
+          admin: loki-admin
+        s3:
+          endpoint: http://minio.minio.svc.cluster.local:9000
+          region: us-east-1
+          s3ForcePathStyle: true
+          insecure: true
+      limits_config:
+        retention_period: 720h
+      compactor:
+        retention_enabled: true
+        # Required when retention_enabled is true: tells the compactor where
+        # to store the delete-request log. Must match the schema's object_store.
+        delete_request_store: s3
+    singleBinary:
+      replicas: 1
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: local-path
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 512Mi
+    # SingleBinary mode — zero out the SimpleScalable components, otherwise the
+    # chart's validate.yaml rejects the install with "more than zero replicas
+    # configured for both the single binary and simple scalable targets".
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    backend:
+      replicas: 0
+    minio:
+      enabled: false
+    chunksCache:
+      enabled: false
+    resultsCache:
+      enabled: false
+    gateway:
+      enabled: false
+    # Chart 6.x moved lokiCanary to top-level; the monitoring.lokiCanary path
+    # is a no-op in this chart version. Keep selfMonitoring under monitoring.
+    lokiCanary:
+      enabled: false
+    monitoring:
+      selfMonitoring:
+        enabled: false
+        grafanaAgent:
+          installOperator: false
+    test:
+      enabled: false
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: kube-prometheus-stack

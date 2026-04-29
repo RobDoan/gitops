@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: royal-dispatch
+  labels:
+    app: royal-dispatch
+    component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: royal-dispatch
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: royal-dispatch
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: quydoan/royal-dispatch-frontend:fef9e96-1777356336 # {"$imagepolicy": "flux-system:royal-dispatch-frontend"}
+          ports:
+            - containerPort: 3000
+          env:
+            - name: INTERNAL_API_URL
+              value: "http://backend.royal-dispatch.svc.cluster.local:8000"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

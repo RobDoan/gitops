@@ -1,0 +1,101 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: royal-dispatch-frontend
+  namespace: flux-system
+spec:
+  image: quydoan/royal-dispatch-frontend
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: royal-dispatch-backend
+  namespace: flux-system
+spec:
+  image: quydoan/royal-dispatch-backend
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: royal-dispatch-admin
+  namespace: flux-system
+spec:
+  image: quydoan/royal-dispatch-admin
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: royal-dispatch-frontend
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: royal-dispatch-frontend
+  filterTags:
+    pattern: '^[a-f0-9]+-(?P<ts>[0-9]+)$'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: royal-dispatch-backend
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: royal-dispatch-backend
+  filterTags:
+    pattern: '^[a-f0-9]+-(?P<ts>[0-9]+)$'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: royal-dispatch-admin
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: royal-dispatch-admin
+  filterTags:
+    pattern: '^[a-f0-9]+-(?P<ts>[0-9]+)$'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: royal-dispatch
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: fluxcdbot
+        email: fluxcdbot@users.noreply.github.com
+      messageTemplate: |
+        chore: update royal-dispatch images
+
+        {{range .Changed.Changes}}
+        - {{.OldValue}} -> {{.NewValue}}
+        {{end}}
+    push:
+      branch: main
+  update:
+    path: ./apps/royal-dispatch
+    strategy: Setters

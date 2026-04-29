@@ -1,0 +1,58 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: app
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: app.postgres
+      rules:
+        - alert: PostgresDown
+          expr: pg_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Postgres is DOWN"
+            description: |
+              prometheus-postgres-exporter reports pg_up=0. The postgres-postgresql-0 pod may be
+              OOMKilled, unschedulable, or the exporter cannot connect. Check:
+              kubectl -n postgres get pod postgres-postgresql-0
+              kubectl -n postgres logs postgres-postgresql-0 --tail=50
+    - name: app.backend
+      rules:
+        - alert: BackendHighLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le, handler) (
+                rate(http_request_duration_seconds_bucket{job="backend",handler="/story"}[5m])
+              )
+            ) > 2
+          for: 10m
+          labels:
+            severity: warning
+            service: backend
+          annotations:
+            summary: "Backend /story p95 latency > 2s for 10m"
+            description: |
+              p95 latency on POST /story has been above 2s for 10m.
+              Likely source files: backend/graph.py (LangGraph pipeline),
+              backend/nodes/generate_story.py, backend/utils/elevenlabs.py.
+              Correlate with: histogram_quantile(0.95, sum by (le, node) (rate(royal_langgraph_node_duration_seconds_bucket[5m]))).
+              Check pod logs: {namespace="royal-dispatch", pod=~"backend-.*"}.
+        - alert: BackendExternalApiErrors
+          expr: sum by (provider) (rate(royal_external_api_calls_total{outcome="error"}[10m])) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+            service: backend
+          annotations:
+            summary: "Backend external API {{ $labels.provider }} error rate > 0.1/s"
+            description: |
+              royal_external_api_calls_total{provider="{{ $labels.provider }}",outcome="error"} is
+              elevated. Likely source file: backend/services/elevenlabs_convai.py or the LangChain
+              wrapper in backend/nodes/generate_story.py (for provider="anthropic"), or
+              backend/utils/mem0_client.py (for provider="mem0"). Cross-reference logs:
+              {namespace="royal-dispatch", pod=~"backend-.*"} |~ "(?i){{ $labels.provider }}".

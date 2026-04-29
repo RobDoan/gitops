@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: personal-site-initsql
+  namespace: personal-site
+data:
+  schema.sql: |
+    CREATE SCHEMA IF NOT EXISTS personal_site;
+    CREATE TABLE IF NOT EXISTS personal_site.sessions (
+      id UUID PRIMARY KEY,
+      ip_hash TEXT NOT NULL,
+      user_agent TEXT,
+      turnstile_verified_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS sessions_ip_hash_idx
+      ON personal_site.sessions(ip_hash, created_at);
+    CREATE TABLE IF NOT EXISTS personal_site.messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      session_id UUID NOT NULL REFERENCES personal_site.sessions(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+      content TEXT NOT NULL,
+      category TEXT,
+      classifier_confidence REAL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS messages_session_idx
+      ON personal_site.messages(session_id, created_at);

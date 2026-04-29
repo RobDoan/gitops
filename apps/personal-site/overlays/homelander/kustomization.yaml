@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# No `namespace:` transformer here — it would force flux-system resources
+# (ImageRepository/ImagePolicy/ImageUpdateAutomation) into personal-site.
+# Each base manifest already sets its own namespace explicitly.
+resources:
+  - ../../base
+patches:
+  - path: patches/ingress-patch.yaml
+  - path: patches/deployment-resources-patch.yaml

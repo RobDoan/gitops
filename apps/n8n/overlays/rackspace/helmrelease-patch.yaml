@@ -1,0 +1,15 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  values:
+    main:
+      persistence:
+        storageClass: ssd
+      extraEnv:
+        WEBHOOK_URL:
+          value: "https://n8n.quybits.com/"
+        N8N_EDITOR_BASE_URL:
+          value: "https://n8n.quybits.com/"

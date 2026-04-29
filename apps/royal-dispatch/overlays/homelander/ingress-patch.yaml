@@ -1,0 +1,127 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: royal-dispatch-frontend
+  namespace: royal-dispatch
+spec:
+  tls:
+    - hosts:
+        - royal-dispatch.homelander.local
+      secretName: royal-dispatch-frontend-tls
+  rules:
+    - host: royal-dispatch.homelander.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+    - host: royal-dispatch-home.quybits.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: royal-dispatch-frontend-api
+  namespace: royal-dispatch
+spec:
+  tls:
+    - hosts:
+        - royal-dispatch.homelander.local
+      secretName: royal-dispatch-frontend-tls
+  rules:
+    - host: royal-dispatch.homelander.local
+      http:
+        paths:
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+    - host: royal-dispatch-home.quybits.com
+      http:
+        paths:
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: royal-dispatch-admin
+  namespace: royal-dispatch
+spec:
+  tls:
+    - hosts:
+        - royal-dispatch-admin.homelander.local
+      secretName: royal-dispatch-admin-tls
+  rules:
+    - host: royal-dispatch-admin.homelander.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3001
+    - host: royal-dispatch-admin-home.quybits.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3001
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: royal-dispatch-admin-api
+  namespace: royal-dispatch
+spec:
+  tls:
+    - hosts:
+        - royal-dispatch-admin.homelander.local
+      secretName: royal-dispatch-admin-tls
+  rules:
+    - host: royal-dispatch-admin.homelander.local
+      http:
+        paths:
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+    - host: royal-dispatch-admin-home.quybits.com
+      http:
+        paths:
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000

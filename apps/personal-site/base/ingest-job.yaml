@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: content-ingest
+  namespace: personal-site
+  annotations:
+    # Jobs have immutable spec.template, so a new image tag can't be applied
+    # in place. This tells Flux's kustomize-controller to delete and recreate
+    # the Job whenever an immutable field changes. See docs/blog/flux-and-immutable-jobs.md.
+    kustomize.toolkit.fluxcd.io/force: "Enabled"
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: apply-schema
+          image: postgres:16-alpine
+          command: ["sh", "-c", "psql \"$POSTGRES_DSN\" -f /init/schema.sql"]
+          envFrom:
+            - secretRef:
+                name: personal-site-postgres
+          volumeMounts:
+            - name: initsql
+              mountPath: /init
+      containers:
+        - name: ingest
+          image: quydoan/personal-site:fa1097c-1777316140 # {"$imagepolicy": "flux-system:personal-site"}
+          workingDir: /app
+          command: ["node", "/app/dist/ingest.js", "/app/content"]
+          envFrom:
+            - configMapRef:
+                name: personal-site-config
+            - secretRef:
+                name: personal-site-secrets
+            - secretRef:
+                name: personal-site-postgres
+      volumes:
+        - name: initsql
+          configMap:
+            name: personal-site-initsql

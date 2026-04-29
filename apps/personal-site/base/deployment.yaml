@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: personal-site
+  labels:
+    app: personal-site
+    component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: personal-site
+      component: web
+  template:
+    metadata:
+      labels:
+        app: personal-site
+        component: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+        - name: web
+          image: quydoan/personal-site:fa1097c-1777316140 # {"$imagepolicy": "flux-system:personal-site"}
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: personal-site-config
+            - secretRef:
+                name: personal-site-secrets
+            - secretRef:
+                name: personal-site-postgres
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextcache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextcache
+          emptyDir: {}

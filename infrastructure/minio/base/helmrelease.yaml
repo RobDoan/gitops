@@ -1,0 +1,32 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: minio
+      version: ">=5.0.0 <7.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: minio
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  values:
+    mode: standalone
+    replicas: 1
+    existingSecret: minio-secrets
+    buckets:
+      - name: royal-audio
+        policy: download
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        memory: 512Mi

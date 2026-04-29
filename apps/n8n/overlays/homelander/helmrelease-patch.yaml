@@ -1,0 +1,17 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  values:
+    main:
+      persistence:
+        storageClass: local-path
+      extraEnv:
+        WEBHOOK_URL:
+          value: "https://n8n-home.quybits.com/"
+        N8N_EDITOR_BASE_URL:
+          value: "https://n8n-home.quybits.com/"
+        THE_ROYAL_DISPATCH_API_URL:
+          value: "http://backend.royal-dispatch.svc.cluster.local:8000"

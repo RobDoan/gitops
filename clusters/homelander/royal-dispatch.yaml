@@ -1,0 +1,33 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: royal-dispatch
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  path: ./apps/royal-dispatch/overlays/homelander
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: postgres
+    - name: minio
+    - name: qdrant
+    - name: n8n
+    - name: cert-manager-issuers
+    - name: ingress-nginx
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: backend
+      namespace: royal-dispatch
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: frontend
+      namespace: royal-dispatch
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: admin
+      namespace: royal-dispatch

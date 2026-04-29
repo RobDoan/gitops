@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - helmrepository.yaml
+  - externalsecret.yaml
+  - helmrelease.yaml
+  - ingress.yaml
+# Intentionally no top-level `namespace:` override — helmrepository.yaml
+# lives in flux-system by design, and a kustomize namespace would rewrite
+# it to `grafana`, breaking the HelmRelease sourceRef.
+configMapGenerator:
+  - name: grafana-royal-dispatch-dashboard
+    namespace: grafana   # set per-generator so helmrepository.yaml stays in flux-system
+    files:
+      - royal-dispatch.json=dashboards/royal-dispatch.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+generatorOptions:
+  disableNameSuffixHash: true

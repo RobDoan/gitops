@@ -1,0 +1,53 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: royal-dispatch
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: royal-dispatch
+spec:
+  route:
+    receiver: slack-default
+    groupBy: [alertname, namespace]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    routes:
+      # Silence the chart's dead-man's-switch alert. Watchdog always fires by
+      # design; its value is only realized when routed to an EXTERNAL monitor
+      # that expects the heartbeat (e.g. Dead Man's Snitch, healthchecks.io).
+      # Until that external hop is wired up, drop it so it stops spamming #alerts.
+      - receiver: "null"
+        matchers:
+          - name: alertname
+            value: Watchdog
+      - receiver: slack-critical
+        matchers:
+          - name: severity
+            value: critical
+  receivers:
+    - name: "null"
+    - name: slack-default
+      slackConfigs:
+        - apiURL:
+            name: alertmanager-slack
+            key: default
+          channel: "#alerts"
+          sendResolved: true
+          title: "{{ .CommonLabels.alertname }} — {{ .CommonLabels.severity }}"
+          text: |-
+            {{ range .Alerts }}• *{{ .Annotations.summary }}*
+            {{ .Annotations.description }}
+            {{ end }}
+    - name: slack-critical
+      slackConfigs:
+        - apiURL:
+            name: alertmanager-slack
+            key: critical
+          channel: "#alerts-critical"
+          sendResolved: true
+          title: "[CRITICAL] {{ .CommonLabels.alertname }}"
+          text: |-
+            {{ range .Alerts }}• *{{ .Annotations.summary }}*
+            {{ .Annotations.description }}
+            {{ end }}

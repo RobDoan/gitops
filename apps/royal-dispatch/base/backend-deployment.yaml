@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: royal-dispatch
+  labels:
+    app: royal-dispatch
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: royal-dispatch
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: royal-dispatch
+        component: backend
+    spec:
+      initContainers:
+        - name: copy-migrations
+          image: quydoan/royal-dispatch-backend:26c682a-1777182749 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
+          command: ['sh', '-c', 'cp -r /app/backend/db/migrations/* /migrations/']
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+        - name: migrate
+          image: migrate/migrate
+          args:
+            - "-path=/migrations"
+            - "-database=$(DATABASE_URL)"
+            - "up"
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: royal-dispatch-postgres
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://royal:$(POSTGRES_PASSWORD)@postgres-postgresql.postgres.svc.cluster.local:5432/royal_dispatch?sslmode=disable"
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      containers:
+        - name: backend
+          image: quydoan/royal-dispatch-backend:26c682a-1777182749 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: royal-dispatch-config
+            - secretRef:
+                name: royal-dispatch-secrets
+            - secretRef:
+                name: royal-dispatch-minio
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: royal-dispatch-postgres
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://royal:$(POSTGRES_PASSWORD)@postgres-postgresql.postgres.svc.cluster.local:5432/royal_dispatch"
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: migrations
+          emptyDir: {}

@@ -1,0 +1,66 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: infra
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: infra.node
+      rules:
+        - alert: KubeNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} is NotReady"
+            description: |
+              Node {{ $labels.node }} has reported Ready=false for >5m.
+              Investigation: kubectl describe node {{ $labels.node }}; check kubelet logs.
+        - alert: NodeMemoryHigh
+          expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory utilization > 90%"
+            description: |
+              Instance {{ $labels.instance }} has used >90% of memory for 10m.
+              Likely cause: a workload exceeded its memory request without a limit. Check
+              `kubectl top pods --all-namespaces | sort -k4 -h | tail -20`.
+        - alert: NodeDiskAlmostFull
+          expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.1
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.instance }} filesystem {{ $labels.mountpoint }} <10% free"
+            description: |
+              Less than 10% free on {{ $labels.mountpoint }} ({{ $labels.device }}).
+              Run: du -h -d1 / on the node, or check PV/PVC consumption with
+              `kubectl get pvc -A --sort-by=.status.capacity.storage`.
+    - name: infra.pod
+      rules:
+        - alert: KubePodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[5m]) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crashlooping"
+            description: |
+              Container {{ $labels.container }} has restarted consistently for 15m.
+              Read logs: kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} -c {{ $labels.container }} --previous
+              Likely source file for royal-dispatch backend: backend/main.py or backend/routes/.
+        - alert: KubePodNotReady
+          expr: sum by (namespace, pod) (kube_pod_status_ready{condition="false"}) == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} not Ready for >15m"
+            description: |
+              Pod has been NotReady for >15m. Likely causes: readiness probe failure,
+              image pull error, PVC not bound. Check: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}.

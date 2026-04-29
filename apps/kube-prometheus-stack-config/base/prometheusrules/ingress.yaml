@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ingress
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: ingress.nginx
+      rules:
+        - alert: IngressNginx5xxRateHigh
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+            / sum(rate(nginx_ingress_controller_requests[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Ingress 5xx rate > 5% for 5m"
+            description: |
+              nginx-ingress is returning 5xx for more than 5% of requests.
+              Likely source: one of the upstreams. Cross-reference pod logs in Loki:
+              {namespace=~"royal-dispatch|n8n|grafana"} |~ "(?i)error|500|502|503|504".
+    - name: ingress.certs
+      rules:
+        - alert: CertManagerCertExpiringSoon
+          expr: (certmanager_certificate_expiration_timestamp_seconds - time()) < 14 * 24 * 3600
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.name }} expires in <14 days"
+            description: |
+              Certificate {{ $labels.namespace }}/{{ $labels.name }} expires at
+              {{ $value | humanizeTimestamp }}. cert-manager should auto-renew; if this
+              alert keeps firing, check: kubectl -n {{ $labels.namespace }} describe certificate {{ $labels.name }}.

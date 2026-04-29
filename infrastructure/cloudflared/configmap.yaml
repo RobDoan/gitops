@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflared
+data:
+  config.yaml: |
+    tunnel: 8b10a577-85d2-4036-96cb-ffd16f2f724b
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+
+    ingress:
+      - hostname: "n8n-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "grafana-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "qdrant-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "minio-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "royal-dispatch-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "royal-dispatch-admin-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - hostname: "hi.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
+      - service: http_status:404

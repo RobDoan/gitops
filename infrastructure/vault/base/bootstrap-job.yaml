@@ -1,0 +1,120 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-bootstrap
+  namespace: vault
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: vault-bootstrap
+      restartPolicy: OnFailure
+      initContainers:
+        - name: install-kubectl
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache curl
+              curl -LO "https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl"
+              chmod +x kubectl
+              cp kubectl /tools/kubectl
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
+      containers:
+        - name: bootstrap
+          image: hashicorp/vault:1.17
+          env:
+            - name: VAULT_ADDR
+              value: "http://vault.vault.svc.cluster.local:8200"
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vault-root-token
+                  key: token
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              export PATH="$PATH:/tools"
+
+              echo "Waiting for Vault to be unsealed..."
+              until vault status 2>/dev/null | grep -q "Sealed.*false"; do
+                echo "  vault sealed or unreachable, retrying in 10s..."
+                sleep 10
+              done
+              echo "Vault is unsealed."
+
+              vault secrets enable -path=secret kv-v2 2>/dev/null \
+                || echo "KV v2 already enabled at secret/"
+
+              vault auth enable approle 2>/dev/null \
+                || echo "AppRole already enabled"
+
+              vault policy write eso-policy - <<'POLICY'
+              path "secret/data/*"     { capabilities = ["read", "list"] }
+              path "secret/metadata/*" { capabilities = ["read", "list"] }
+              POLICY
+
+              vault policy write n8n-policy - <<'POLICY'
+              path "secret/data/n8n" { capabilities = ["read"] }
+              POLICY
+
+              vault policy write grafana-policy - <<'POLICY'
+              path "secret/data/grafana" { capabilities = ["read"] }
+              POLICY
+
+              vault policy write qdrant-policy - <<'POLICY'
+              path "secret/data/qdrant" { capabilities = ["read"] }
+              POLICY
+
+              vault write auth/approle/role/eso \
+                token_policies="eso-policy" \
+                token_ttl=1h \
+                token_max_ttl=24h
+
+              ROLE_ID=$(vault read -field=role_id auth/approle/role/eso/role-id)
+              SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/eso/secret-id)
+
+              kubectl create secret generic vault-approle-credentials \
+                -n external-secrets \
+                --from-literal=roleId="${ROLE_ID}" \
+                --from-literal=secretId="${SECRET_ID}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              # Only seed secrets if they don't already exist
+              if ! vault kv get secret/n8n >/dev/null 2>&1; then
+                echo "Seeding secret/n8n (first run)..."
+                vault kv put secret/n8n \
+                  encryption_key="changeme-replace-with-32-char-key"
+              else
+                echo "secret/n8n already exists, skipping."
+              fi
+
+              if ! vault kv get secret/grafana >/dev/null 2>&1; then
+                echo "Seeding secret/grafana (first run)..."
+                vault kv put secret/grafana \
+                  admin_password="changeme-replace-before-live" \
+                  admin_user="admin"
+              else
+                echo "secret/grafana already exists, skipping."
+              fi
+
+              if ! vault kv get secret/qdrant >/dev/null 2>&1; then
+                echo "Seeding secret/qdrant (first run)..."
+                vault kv put secret/qdrant \
+                  api_key="changeme-replace-before-live"
+              else
+                echo "secret/qdrant already exists, skipping."
+              fi
+
+              echo "Bootstrap complete."
+      volumes:
+        - name: tools
+          emptyDir: {}
