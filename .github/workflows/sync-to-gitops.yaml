@@ -48,7 +48,8 @@ jobs:
 
           git rm -rf --ignore-unmatch \
             .agents .claude .cursor \
-            docs/specs docs/superpowers docs/blog docs/personal \
+            docs/specs docs/superpowers docs/blog docs/personal .github/sync-to-gitops.yaml \
+            .agents .augment \
             CLAUDE.md GEMINI.md AGENTS.md opencode.json skills-lock.json
 
           git add -A
