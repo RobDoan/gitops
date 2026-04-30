@@ -13,20 +13,29 @@ spec:
     groupInterval: 5m
     repeatInterval: 4h
     routes:
-      # Silence the chart's dead-man's-switch alert. Watchdog always fires by
-      # design; its value is only realized when routed to an EXTERNAL monitor
-      # that expects the heartbeat (e.g. Dead Man's Snitch, healthchecks.io).
-      # Until that external hop is wired up, drop it so it stops spamming #alerts.
-      - receiver: "null"
+      # Watchdog is the chart's dead-man's-switch — always firing by design.
+      # Stream it to healthchecks.io as a heartbeat; if pings stop for >1h,
+      # healthchecks pages us in #healthcheck-io-alert (Alertmanager itself
+      # is down, so its own alerts can't reach us).
+      - receiver: healthchecks-watchdog
         matchers:
           - name: alertname
             value: Watchdog
+        groupWait: 0s
+        groupInterval: 5m
+        repeatInterval: 5m
       - receiver: slack-critical
         matchers:
           - name: severity
             value: critical
   receivers:
     - name: "null"
+    - name: healthchecks-watchdog
+      webhookConfigs:
+        - urlSecret:
+            name: alertmanager-healthchecks
+            key: watchdog_url
+          sendResolved: false
     - name: slack-default
       slackConfigs:
         - apiURL:
