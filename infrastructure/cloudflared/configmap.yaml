@@ -47,6 +47,12 @@ data:
           httpHostHeader: ""
           connectTimeout: 30s
           noHappyEyeballs: true
+      - hostname: "langfuse-home.quybits.com"
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+        originRequest:
+          httpHostHeader: ""
+          connectTimeout: 30s
+          noHappyEyeballs: true
       - hostname: "hi.quybits.com"
         service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
         originRequest:
