@@ -22,7 +22,7 @@ spec:
       host: postgres-postgresql.postgres.svc.cluster.local
       port: 5432
       auth:
-        username: royal
+        username: langfuse
         database: langfuse
         existingSecret: langfuse-secrets
         secretKeys:
