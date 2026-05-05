@@ -24,38 +24,44 @@ spec:
       auth:
         username: royal
         database: langfuse
+        password:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: db-password
     s3:
       deploy: false
       bucket: langfuse
       region: us-east-1
       endpoint: http://minio.minio.svc.cluster.local:9000
       forcePathStyle: true
-    nextauth:
-      url: https://langfuse-home.quybits.com
+      accessKeyId:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: s3-access-key
+      secretAccessKey:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: s3-secret-key
+    langfuse:
+      nextauth:
+        url: https://langfuse-home.quybits.com
+        secret:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: nextauth-secret
+      salt:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: salt
+      encryptionKey:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: encryption-key
+    clickhouse:
+      auth:
+        password:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: clickhouse-password
     # Clickhouse and Redis are enabled by default in the chart if not explicitly disabled.
     # We leave them as is or disable if they cause issues.
-  valuesFrom:
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: db-password
-      targetPath: postgresql.auth.password
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: nextauth-secret
-      targetPath: nextauth.secret
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: salt
-      targetPath: langfuse.salt
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: encryption-key
-      targetPath: langfuse.encryptionKey
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: s3-access-key
-      targetPath: s3.accessKeyId
-    - kind: Secret
-      name: langfuse-secrets
-      valuesKey: s3-secret-key
-      targetPath: s3.secretAccessKey

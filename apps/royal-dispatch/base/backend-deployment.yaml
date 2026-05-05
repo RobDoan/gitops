@@ -20,7 +20,7 @@ spec:
     spec:
       initContainers:
         - name: copy-migrations
-          image: quydoan/royal-dispatch-backend:26c682a-1777182749 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
+          image: quydoan/royal-dispatch-backend:458b968-1777945514 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
           command: ['sh', '-c', 'cp -r /app/backend/db/migrations/* /migrations/']
           volumeMounts:
             - name: migrations
@@ -44,7 +44,7 @@ spec:
               mountPath: /migrations
       containers:
         - name: backend
-          image: quydoan/royal-dispatch-backend:26c682a-1777182749 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
+          image: quydoan/royal-dispatch-backend:458b968-1777945514 # {"$imagepolicy": "flux-system:royal-dispatch-backend"}
           ports:
             - containerPort: 8000
           envFrom:
