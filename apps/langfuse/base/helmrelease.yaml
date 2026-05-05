@@ -59,9 +59,9 @@ spec:
           key: encryption-key
     clickhouse:
       auth:
-        password:
-          secretKeyRef:
-            name: langfuse-secrets
-            key: clickhouse-password
-    # Clickhouse and Redis are enabled by default in the chart if not explicitly disabled.
-    # We leave them as is or disable if they cause issues.
+        existingSecret: langfuse-secrets
+        existingSecretKey: clickhouse-password
+    redis:
+      auth:
+        existingSecret: langfuse-secrets
+        existingSecretPasswordKey: redis-password
