@@ -20,6 +20,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: langfuse
+                name: langfuse-web
                 port:
                   number: 3000
