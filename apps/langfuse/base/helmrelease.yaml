@@ -24,10 +24,9 @@ spec:
       auth:
         username: royal
         database: langfuse
-        password:
-          secretKeyRef:
-            name: langfuse-secrets
-            key: db-password
+        existingSecret: langfuse-secrets
+        secretKeys:
+          userPasswordKey: db-password
     s3:
       deploy: false
       bucket: langfuse
