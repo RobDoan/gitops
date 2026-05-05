@@ -11,3 +11,5 @@ data:
   USER_TIMEZONE: "America/Los_Angeles"
   NEXT_PUBLIC_FRONTEND_URL: "https://royal-dispatch-home.quybits.com"
   BACKEND_PUBLIC_URL: "https://royal-dispatch-home.quybits.com"
+  LANGFUSE_HOST: "https://langfuse-home.quybits.com"
+
