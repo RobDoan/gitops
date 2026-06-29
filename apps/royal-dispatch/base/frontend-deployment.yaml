@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: quydoan/royal-dispatch-frontend:32ef9d1-1777743689 # {"$imagepolicy": "flux-system:royal-dispatch-frontend"}
+          image: quydoan/royal-dispatch-frontend:77065b2-1779981516 # {"$imagepolicy": "flux-system:royal-dispatch-frontend"}
           ports:
             - containerPort: 3000
           env:
