@@ -11,6 +11,10 @@ spec:
     prometheus:
       prometheusSpec:
         externalUrl: https://prometheus.homelander.local
+        # Cap TSDB well below node disk capacity. local-path PVCs live on the
+        # node root fs and are not quota-enforced, so the base 18GB size limit
+        # can fill a small homelander node. 10GB leaves headroom for other PVCs.
+        retentionSize: 10GB
     # K3s embeds these in the k3s-server process — no separate scrape targets.
     kubeScheduler:
       enabled: false
