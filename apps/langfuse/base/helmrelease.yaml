@@ -60,6 +60,18 @@ spec:
       auth:
         existingSecret: langfuse-secrets
         existingSecretKey: clickhouse-password
+      # ClickHouse's own diagnostic log tables ship without a TTL and grew to
+      # ~7.5GB per replica on local-path (no quota) before anyone noticed.
+      extraOverrides: |
+        <clickhouse>
+          <trace_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></trace_log>
+          <metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></metric_log>
+          <asynchronous_metric_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></asynchronous_metric_log>
+          <text_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></text_log>
+          <latency_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></latency_log>
+          <query_log><ttl>event_date + INTERVAL 7 DAY DELETE</ttl></query_log>
+          <part_log><ttl>event_date + INTERVAL 7 DAY DELETE</ttl></part_log>
+        </clickhouse>
     redis:
       auth:
         existingSecret: langfuse-secrets
