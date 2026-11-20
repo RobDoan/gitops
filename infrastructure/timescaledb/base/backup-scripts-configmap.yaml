@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-backup-scripts
+  namespace: postgres
+data:
+  # Runs in the timescaledb image, so the dump tools match the server version.
+  dump.sh: |
+    set -eu
+    D=$(date -u +%F)
+    mkdir -p "/work/$D"
+    echo "$D" > /work/LATEST
+    cd "/work/$D"
+    pg_dumpall --globals-only > globals.sql
+    psql -XAt -d postgres -c "select datname from pg_database where not datistemplate order by 1" > /work/databases
+    while IFS= read -r db; do
+      pg_dump -Fc -d "$db" -f "$db.dump"
+      # Fails the job if the archive is unreadable.
+      pg_restore --list "$db.dump" > /dev/null
+      echo "dumped $db ($(du -h "$db.dump" | cut -f1))"
+    done < /work/databases
+
+  # Runs in amazon/aws-cli. MinIO first, then S3; any failure fails the job, which
+  # fires PostgresBackupFailed.
+  upload.sh: |
+    set -eu
+    D=$(cat /work/LATEST)
+    MINIO_URL=http://minio.minio.svc.cluster.local:9000
+
+    # `env` keeps the MinIO credentials out of this shell, so the S3 upload below
+    # still uses the AWS ones. MinIO takes any region; when_required skips the
+    # newer default checksums that older MinIO releases reject.
+    minio() {
+      env AWS_ACCESS_KEY_ID="$MINIO_ACCESS_KEY" AWS_SECRET_ACCESS_KEY="$MINIO_SECRET_KEY" \
+        AWS_DEFAULT_REGION=us-east-1 \
+        AWS_REQUEST_CHECKSUM_CALCULATION=when_required \
+        AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
+        aws --endpoint-url "$MINIO_URL" "$@"
+    }
+
+    minio s3 cp --recursive --only-show-errors "/work/$D" "s3://postgres-backups/$D/"
+    echo "minio: uploaded $D"
+
+    # Keep 14 days in MinIO. Folder names are UTC dates, compared as YYYYMMDD numbers.
+    cutoff=$(date -u -d '14 days ago' +%Y%m%d)
+    minio s3 ls s3://postgres-backups/ > /work/minio-folders
+    awk '$1 == "PRE" { print $2 }' /work/minio-folders | while IFS= read -r folder; do
+      day=${folder%/}
+      case "$day" in
+        [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+        *) continue ;;
+      esac
+      if [ "$(echo "$day" | tr -d -)" -lt "$cutoff" ]; then
+        minio s3 rm --recursive --only-show-errors "s3://postgres-backups/$folder"
+        echo "minio: pruned $day"
+      fi
+    done
+
+    # The IAM user can only upload: no list, no delete. The bucket's lifecycle rule
+    # expires objects after 30 days.
+    aws s3 cp --recursive --only-show-errors "/work/$D" "s3://$S3_BUCKET/$D/"
+    echo "s3: uploaded $D"

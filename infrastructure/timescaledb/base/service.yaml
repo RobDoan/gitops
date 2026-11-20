@@ -1,0 +1,53 @@
+# In-cluster clients: timescaledb.postgres.svc.cluster.local:5432
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb
+  namespace: postgres
+  labels:
+    app.kubernetes.io/name: timescaledb
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: timescaledb
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb-hl
+  namespace: postgres
+  labels:
+    app.kubernetes.io/name: timescaledb
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: timescaledb
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+# MacBook clients, via k3s ServiceLB on every node IP and on jarvis's Tailscale IP
+# 100.89.244.65. Home LAN and tailnet only; never routed through Cloudflare.
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb-lan
+  namespace: postgres
+  labels:
+    app.kubernetes.io/name: timescaledb
+spec:
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - 192.168.1.0/24
+    - 100.64.0.0/10
+  selector:
+    app.kubernetes.io/name: timescaledb
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

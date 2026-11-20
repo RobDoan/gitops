@@ -21,6 +21,50 @@ spec:
               OOMKilled, unschedulable, or the exporter cannot connect. Check:
               kubectl -n postgres get pod postgres-postgresql-0
               kubectl -n postgres logs postgres-postgresql-0 --tail=50
+    - name: app.postgres-backup
+      rules:
+        - alert: PostgresBackupFailed
+          expr: |
+            sum(
+              kube_job_status_failed{namespace="postgres",job_name=~"timescaledb-backup.*"}
+              * on(namespace, job_name) group_left()
+              ((time() - kube_job_created{namespace="postgres",job_name=~"timescaledb-backup.*"}) < bool 86400)
+            ) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Postgres nightly backup FAILED"
+            description: |
+              A Job from CronJob postgres/timescaledb-backup failed in the last 24h: the dump,
+              the MinIO upload or the S3 upload. Check:
+              kubectl -n postgres get jobs
+              kubectl -n postgres logs job/<job-name> -c dump
+              kubectl -n postgres logs job/<job-name> -c upload
+        - alert: PostgresBackupMissing
+          expr: time() - kube_cronjob_status_last_successful_time{namespace="postgres",cronjob="timescaledb-backup"} > 93600
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No successful Postgres backup in 26h"
+            description: |
+              CronJob postgres/timescaledb-backup has not completed successfully in 26 hours.
+              Check whether it ran at all, and why it failed:
+              kubectl -n postgres get cronjob timescaledb-backup
+              kubectl -n postgres get jobs
+        - alert: PostgresBackupMissing
+          expr: absent(kube_cronjob_status_last_successful_time{namespace="postgres",cronjob="timescaledb-backup"})
+          for: 26h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Postgres backup has never succeeded"
+            description: |
+              CronJob postgres/timescaledb-backup has no successful run on record for 26 hours
+              (or kube-state-metrics stopped reporting it). Check:
+              kubectl -n postgres get cronjob timescaledb-backup
+              kubectl -n postgres get jobs
     - name: app.backend
       rules:
         - alert: BackendHighLatencyP95

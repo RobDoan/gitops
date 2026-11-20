@@ -13,6 +13,7 @@ resources:
   - qdrant.yaml
   - n8n.yaml
   - postgres.yaml
+  - timescaledb.yaml
   - minio.yaml
   - royal-dispatch.yaml
   - cloudflared.yaml

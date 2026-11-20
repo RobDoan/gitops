@@ -1,0 +1,91 @@
+# Shared TimescaleDB 2.32 / PG 18 for every homelander app.
+# Spec: docs/superpowers/specs/2026-11-18-shared-timescaledb-design.md
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: postgres
+  labels:
+    app.kubernetes.io/name: timescaledb
+spec:
+  serviceName: timescaledb-hl
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: timescaledb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: timescaledb
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: timescaledb
+          image: timescale/timescaledb:2.32.0-pg18
+          args:
+            - postgres
+            # PWM queries and the nightly dump lock ~1,600 hypertable chunks at once.
+            - -c
+            - max_locks_per_transaction=1024
+            - -c
+            - shared_buffers=1GB
+            - -c
+            - effective_cache_size=3GB
+            - -c
+            - maintenance_work_mem=256MB
+            - -c
+            - timescaledb.telemetry_level=off
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secrets
+                  key: postgres-password
+            # Settings are pinned by the args above; stop the image's tuner from
+            # rewriting postgresql.conf on first start.
+            - name: NO_TS_TUNE
+              value: "true"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            # PG 18 images keep PGDATA at /var/lib/postgresql/18/docker, under this
+            # VOLUME. Mounting the old /var/lib/postgresql/data path would leave
+            # PGDATA outside the PVC and re-run initdb on every restart.
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: dshm
+              mountPath: /dev/shm
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-h", "127.0.0.1"]
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              memory: 4Gi
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
