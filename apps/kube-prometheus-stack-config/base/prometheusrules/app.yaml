@@ -17,10 +17,10 @@ spec:
           annotations:
             summary: "Postgres is DOWN"
             description: |
-              prometheus-postgres-exporter reports pg_up=0. The postgres-postgresql-0 pod may be
+              prometheus-postgres-exporter reports pg_up=0. The timescaledb-0 pod may be
               OOMKilled, unschedulable, or the exporter cannot connect. Check:
-              kubectl -n postgres get pod postgres-postgresql-0
-              kubectl -n postgres logs postgres-postgresql-0 --tail=50
+              kubectl -n postgres get pod timescaledb-0
+              kubectl -n postgres logs timescaledb-0 --tail=50
     - name: app.postgres-backup
       rules:
         - alert: PostgresBackupFailed

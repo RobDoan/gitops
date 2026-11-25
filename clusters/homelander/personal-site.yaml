@@ -12,7 +12,7 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: postgres
+    - name: timescaledb
     - name: qdrant
     - name: cert-manager-issuers
     - name: ingress-nginx

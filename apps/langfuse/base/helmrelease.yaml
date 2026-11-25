@@ -19,7 +19,7 @@ spec:
   values:
     postgresql:
       deploy: false
-      host: postgres-postgresql.postgres.svc.cluster.local
+      host: timescaledb.postgres.svc.cluster.local
       port: 5432
       auth:
         username: langfuse

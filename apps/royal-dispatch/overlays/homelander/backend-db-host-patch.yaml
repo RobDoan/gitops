@@ -1,0 +1,8 @@
+# homelander only: the shared TimescaleDB replaced the Bitnami server. The base is shared
+# with rackspace, so the host changes here, not in base/backend-deployment.yaml.
+- op: replace
+  path: /spec/template/spec/initContainers/1/env/1/value
+  value: "postgresql://royal:$(POSTGRES_PASSWORD)@timescaledb.postgres.svc.cluster.local:5432/royal_dispatch?sslmode=disable"
+- op: replace
+  path: /spec/template/spec/containers/0/env/1/value
+  value: "postgresql://royal:$(POSTGRES_PASSWORD)@timescaledb.postgres.svc.cluster.local:5432/royal_dispatch"

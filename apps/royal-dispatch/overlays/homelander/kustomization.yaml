@@ -5,3 +5,9 @@ resources:
 patches:
   - path: configmap-patch.yaml
   - path: ingress-patch.yaml
+  - path: backend-db-host-patch.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: backend
